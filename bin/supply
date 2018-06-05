@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Usage:
-#  bin/compile BUILD_DIR CACHE_DIR ENV_DIR
+#  bin/supply BUILD_DIR CACHE_DIR ENV_DIR
 # Example
 #   BUILD_DIR is /tmp/build_5b72bfcaef1adfe4bb7a9e34d80201fc
 #   CACHE_DIR is  app
@@ -76,45 +76,6 @@ mkdir -p "${BUILD_TARGET_DIR}"
 APP_TARGET_DIR="/app/freetds"
 mkdir -p "${BUILD_TARGET_DIR}"
 
-configure_app_env_vars() {
-  topic "Creating .profile.d entry"
-  mkdir -p "${BUILD_DIR}/.profile.d"
-
-  # These exports must point to /app, because the profile is
-  # executed in a running dyno, not the buildpack environment
-  cat <<EOF > "${BUILD_DIR}/.profile.d/freetds.sh"
-  export PATH="${APP_TARGET_DIR}/bin:$PATH"
-  # tiny_tds extconf.rb uses FREETDS_DIR
-  # https://github.com/rails-sqlserver/tiny_tds/blob/5046755ca91594003f8b3ca541d136f3ed859973/ext/tiny_tds/extconf.rb#L36-L38
-  export FREETDS_DIR="${APP_TARGET_DIR}"
-  export LD_LIBRARY_PATH="${APP_TARGET_DIR}/lib:${LD_LIBRARY_PATH:-/usr/local/lib}"
-  export LD_RUN_PATH="${APP_TARGET_DIR}/lib:${LD_RUN_PATH:-/usr/local/lib}"
-  export LIBRARY_PATH="${APP_TARGET_DIR}/lib:${LIBRARY_PATH:-/usr/local/lib}"
-  export SYBASE="${APP_TARGET_DIR}"
-EOF
- chmod +x "${BUILD_DIR}/.profile.d/freetds.sh"
- echo "configured APP env vars:" | indent
- indent < "${BUILD_DIR}/.profile.d/freetds.sh"
- # shellcheck disable=SC1090
- . "${BUILD_DIR}/.profile.d/freetds.sh"
-}
-
-configure_buildpack_env_vars() {
-  # These exports point to the build directory, not to /app, so that
-  # they work for later buildpacks.
-  export PATH="${BUILD_TARGET_DIR}/bin:$PATH"
-  export FREETDS_DIR="${BUILD_TARGET_DIR}"
-  export LD_LIBRARY_PATH="${BUILD_TARGET_DIR}/lib:${LD_LIBRARY_PATH:-/usr/local/lib}"
-  export LD_RUN_PATH="${BUILD_TARGET_DIR}/lib:${LD_RUN_PATH:-/usr/local/lib}"
-  export LIBRARY_PATH="${BUILD_TARGET_DIR}/lib:${LIBRARY_PATH:-/usr/local/lib}"
-  export SYBASE="${APP_TARGET_DIR}"
-  # give environment to later buildpacks
-  export | grep -E -e ' (PATH|LD_LIBRARY_PATH|LIBRARY_PATH|FREETDS_DIR|SYBASE)=' > "${LP_DIR}/export"
-
-  echo "configured BUILDPACK env vars:" | indent
-  indent < "${LP_DIR}/export"
-}
-
 download_and_extract_freetds_archive() {
   FREETDS_FILE="$FREETDS_ARCHIVE_NAME.tar.gz"
   FREETDS_URL="ftp://ftp.freetds.org/pub/freetds/stable/${FREETDS_FILE}"
@@ -172,8 +133,6 @@ cache_build_artifacts_for_future_deploys() {
 main() {
   topic "FreeTDS ${FREETDS_VERSION} building in ${BUILD_DIR}"
 
-  configure_app_env_vars
-
   if [ ! -f "$CACHED_TAR" ]; then
     info "Cached files not found - downloading and unpacking..."
     download_and_extract_freetds_archive
@@ -188,8 +147,6 @@ main() {
 
   info "Unpacking cached files..."
   tar xjf "${CACHED_TAR}" -C "${BUILD_TARGET_DIR}" | indent
-
-  configure_buildpack_env_vars
 
   info "Install of FreeTDS ${FREETDS_VERSION} complete"
 }
