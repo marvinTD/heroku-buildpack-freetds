@@ -79,7 +79,7 @@ mkdir -p "${BUILD_TARGET_DIR}"
 download_and_extract_freetds_archive() {
   FREETDS_FILE="$FREETDS_ARCHIVE_NAME.tar.gz"
   # FREETDS_URL="ftp://ftp.freetds.org/pub/freetds/stable/${FREETDS_FILE}"
-  FREETDS_URL="http://www.freetds.org/files/stable/${FREETDS_FILE}" # their ftp server occasionally goes down
+  FREETDS_URL="https://www.freetds.org/files/stable/${FREETDS_FILE}" # their ftp server occasionally goes down
   # TODO(BF): Print log when HEROKUR_FREETDS_BUILDPACK_DEBUG is set
   # TODO(BF): Consider calculating and verifying SHA256: openssl dgst -sha256 < "$FREETDS_FILE"
   curl -s "$FREETDS_URL" | tar xzvf - -C "${BUILD_DIR}" > "${BUILD_DIR}/build_log-unpack.log" # Can't write to the archive dir until it exists
